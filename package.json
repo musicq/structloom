@@ -2,6 +2,14 @@
   "name": "structloom",
   "version": "0.0.1",
   "description": "Type-safe data structures for TypeScript and JavaScript.",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test:types": "tsc -p tsconfig.type-tests.json",
+    "test:w": "node --test --watch",
+    "test": "node --test",
+    "check": "npm run build && npm run test:types && npm test"
+  },
   "keywords": [
     "data-structures",
     "typescript",
@@ -32,10 +40,6 @@
   "homepage": "https://github.com/musicq/ds#readme",
   "engines": {
     "node": ">=20"
-  },
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
   },
   "publishConfig": {
     "access": "public"
