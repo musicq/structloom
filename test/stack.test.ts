@@ -1,30 +1,29 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 import { Stack } from "../src/index.ts";
 
 describe("Stack.methods", () => {
   it("initialize with empty values", () => {
     const stack = new Stack();
-    assert.equal(stack.size, 0);
+    expect(stack.size).toBe(0);
   });
 
   it("initialize with values", () => {
     const stack = new Stack([1, 2, 3]);
-    assert.equal(stack.size, 3);
+    expect(stack.size).toBe(3);
   });
 
   it("Stack.from", () => {
     const stack = Stack.from([1, 2, 3]);
-    assert.equal(stack instanceof Stack, true);
-    assert.equal(stack.size, 3);
+    expect(stack instanceof Stack).toBe(true);
+    expect(stack.size).toBe(3);
   });
 
   it("push", () => {
     const stack = new Stack();
     stack.push(1);
-    assert.equal(stack.size, 1);
+    expect(stack.size).toBe(1);
     stack.push(2);
-    assert.equal(stack.size, 2);
+    expect(stack.size).toBe(2);
   });
 
   it("pop", () => {
@@ -32,38 +31,38 @@ describe("Stack.methods", () => {
     stack.push(1);
     stack.push(2);
 
-    assert.equal(stack.pop(), 2);
-    assert.equal(stack.pop(), 1);
-    assert.equal(stack.pop(), undefined);
+    expect(stack.pop()).toBe(2);
+    expect(stack.pop()).toBe(1);
+    expect(stack.pop()).toBe(undefined);
   });
 
   it("peek", () => {
     const stack = new Stack();
     stack.push(1);
-    assert.equal(stack.peek(), 1);
+    expect(stack.peek()).toBe(1);
     stack.push(2);
-    assert.equal(stack.peek(), 2);
+    expect(stack.peek()).toBe(2);
     stack.pop();
-    assert.equal(stack.peek(), 1);
+    expect(stack.peek()).toBe(1);
     stack.pop();
-    assert.equal(stack.peek(), undefined);
+    expect(stack.peek()).toBe(undefined);
   });
 
   it("clear", () => {
     const stack = new Stack();
     stack.push(1);
     stack.push(2);
-    assert.equal(stack.size, 2);
+    expect(stack.size).toBe(2);
     stack.clear();
-    assert.equal(stack.size, 0);
+    expect(stack.size).toBe(0);
   });
 
   it("check empty stack", () => {
     const stack = new Stack();
-    assert.equal(stack.isEmpty, true);
+    expect(stack.isEmpty).toBe(true);
     stack.push(1);
-    assert.equal(stack.isEmpty, false);
+    expect(stack.isEmpty).toBe(false);
     stack.pop();
-    assert.equal(stack.isEmpty, true);
+    expect(stack.isEmpty).toBe(true);
   });
 });

@@ -5,9 +5,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test:types": "tsc -p tsconfig.type-tests.json",
-    "test:w": "node --test --watch",
-    "test": "node --test",
+    "test:types": "vitest run --typecheck.only --typecheck.tsconfig tsconfig.type-tests.json",
+    "test:w": "vitest",
+    "test": "vitest run",
     "check": "npm run build && npm run test:types && npm test"
   },
   "keywords": [
@@ -45,6 +45,8 @@
     "access": "public"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2",
+    "vitest": "4.1.10"
   }
 }
