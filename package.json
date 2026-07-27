@@ -1,6 +1,7 @@
 {
   "name": "structloom",
   "version": "0.0.1",
+  "packageManager": "pnpm@11.17.0",
   "description": "Type-safe data structures for TypeScript and JavaScript.",
   "scripts": {
     "build": "tsc",
@@ -39,7 +40,7 @@
   },
   "homepage": "https://github.com/musicq/ds#readme",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "publishConfig": {
     "access": "public"
