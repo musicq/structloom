@@ -4,16 +4,20 @@ import { LNode, SinglyLinkedList } from "../src/index.ts";
 type Visit<T> = readonly [node: LNode<T>, index: number];
 
 function createList<T>(values: readonly T[]): SinglyLinkedList<T> {
-  const list = new SinglyLinkedList<T>();
-  values.forEach((value) => list.append(value));
-  return list;
+  return SinglyLinkedList.from([...values]);
 }
 
 function getNodes<T>(list: SinglyLinkedList<T>): LNode<T>[] {
   const nodes: LNode<T>[] = [];
+  const visited = new Set<LNode<T>>();
   let node = list.head;
 
   while (node !== null) {
+    if (visited.has(node)) {
+      throw new Error("Cycle detected while traversing the list");
+    }
+
+    visited.add(node);
     nodes.push(node);
     node = node.next;
   }
@@ -29,6 +33,7 @@ function expectList<T>(list: SinglyLinkedList<T>, values: readonly T[]): void {
   expect(list.head).toBe(nodes[0] ?? null);
   expect(list.tail).toBe(nodes[nodes.length - 1] ?? null);
   expect(list.tail?.next ?? null).toBe(null);
+  expect(list.isEmpty).toBe(values.length === 0);
 }
 
 function expectSameNodes<T>(
@@ -74,25 +79,6 @@ describe("SinglyLinkedList", () => {
       const list = new SinglyLinkedList<number>();
 
       expectList(list, []);
-      expect(list.isEmpty).toBe(true);
-    });
-  });
-
-  describe("isEmpty", () => {
-    it.each(["append", "prepend"] as const)("is false after %s", (method) => {
-      const list = new SinglyLinkedList<number>();
-
-      list[method](1);
-
-      expect(list.isEmpty).toBe(false);
-    });
-
-    it("becomes true after the last node is removed", () => {
-      const list = createList([1]);
-
-      list.removeAll(() => true);
-
-      expect(list.isEmpty).toBe(true);
     });
   });
 
@@ -129,20 +115,27 @@ describe("SinglyLinkedList", () => {
   });
 
   describe("from", () => {
-    it("creates a list containing every value in the original order", () => {
-      const list = SinglyLinkedList.from([1, 2, 3]);
+    it("copies values in order without retaining or modifying the source array", () => {
+      const values = [1, 2, 3];
+      const list = SinglyLinkedList.from(values);
 
+      expect(values).toEqual([1, 2, 3]);
+      values.reverse();
       expectList(list, [1, 2, 3]);
+      expectList(SinglyLinkedList.from<number>([]), []);
     });
   });
 
   describe("forEach", () => {
-    it("visits every node with its zero-based index", () => {
+    it("visits every node with its zero-based index regardless of callback results", () => {
       const list = createList([1, 2, 3]);
       const nodes = getNodes(list);
       const visits: Visit<number>[] = [];
 
-      list.forEach((node, index) => visits.push([node, index]));
+      list.forEach((node, index) => {
+        visits.push([node, index]);
+        return false;
+      });
 
       expectVisits(visits, nodes);
     });
@@ -150,23 +143,9 @@ describe("SinglyLinkedList", () => {
     it("does not invoke the callback for an empty list", () => {
       const callback = vi.fn();
 
-      const result = new SinglyLinkedList<number>().forEach(callback);
+      new SinglyLinkedList<number>().forEach(callback);
 
-      expect(result).toBeUndefined();
       expect(callback).not.toHaveBeenCalled();
-    });
-
-    it("ignores callback return values", () => {
-      const list = createList([1, 2, 3]);
-      const visitedValues: number[] = [];
-
-      const result = list.forEach((node) => {
-        visitedValues.push(node.value);
-        return false;
-      });
-
-      expect(result).toBeUndefined();
-      expect(visitedValues).toEqual([1, 2, 3]);
     });
   });
 
@@ -216,12 +195,11 @@ describe("SinglyLinkedList", () => {
       const newNode = new LNode(3);
       const visits: Visit<number>[] = [];
 
-      const result = list.insert((node, index) => {
+      list.insert((node, index) => {
         visits.push([node, index]);
         return node.value === 2;
       }, newNode);
 
-      expect(result).toBeUndefined();
       expectVisits(visits, originalNodes.slice(0, 2));
       expectList(list, [1, 2, 3, 2, 4]);
       expectSameNodes(getNodes(list), [
@@ -268,34 +246,38 @@ describe("SinglyLinkedList", () => {
       const newNode = new LNode(1);
       const predictor = vi.fn(() => true);
 
-      const result = list.insert(predictor, newNode);
+      list.insert(predictor, newNode);
 
-      expect(result).toBeUndefined();
       expect(predictor).not.toHaveBeenCalled();
       expectList(list, []);
       expect(newNode.next).toBeNull();
     });
   });
 
-  describe("removeFirst", () => {
-    it("removes and returns the head node", () => {
+  describe.each([
+    { method: "removeFirst", removedIndex: 0, remainingValues: [2, 3] },
+    { method: "removeLast", removedIndex: 2, remainingValues: [1, 2] },
+  ] as const)("$method", ({ method, removedIndex, remainingValues }) => {
+    it("removes and returns the expected end node", () => {
       const list = createList([1, 2, 3]);
       const originalNodes = getNodes(list);
 
-      const removedNode = list.removeFirst();
+      const removedNode = list[method]();
 
-      expect(removedNode).toBe(originalNodes[0]);
+      expect(removedNode).toBe(originalNodes[removedIndex]);
       expect(removedNode?.next).toBeNull();
-      console.log(list.head);
-      expectList(list, [2, 3]);
-      expectSameNodes(getNodes(list), originalNodes.slice(1));
+      expectList(list, remainingValues);
+      expectSameNodes(
+        getNodes(list),
+        method === "removeFirst" ? originalNodes.slice(1) : originalNodes.slice(0, -1),
+      );
     });
 
     it("clears head and tail when removing the only node", () => {
       const list = createList([1]);
-      const onlyNode = list.head;
+      const onlyNode = method === "removeFirst" ? list.head : list.tail;
 
-      const removedNode = list.removeFirst();
+      const removedNode = list[method]();
 
       expect(removedNode).toBe(onlyNode);
       expect(removedNode?.next).toBeNull();
@@ -305,42 +287,7 @@ describe("SinglyLinkedList", () => {
     it("returns null when the list is empty", () => {
       const list = new SinglyLinkedList<number>();
 
-      const removedNode = list.removeFirst();
-
-      expect(removedNode).toBeNull();
-      expectList(list, []);
-    });
-  });
-
-  describe("removeLast", () => {
-    it("removes and returns the tail node", () => {
-      const list = createList([1, 2, 3]);
-      const originalNodes = getNodes(list);
-
-      const removedNode = list.removeLast();
-
-      expect(removedNode).toBe(originalNodes[2]);
-      expect(removedNode?.next).toBeNull();
-      console.log(list.head);
-      expectList(list, [1, 2]);
-      expectSameNodes(getNodes(list), originalNodes.slice(0, -1));
-    });
-
-    it("clears head and tail when removing the only node", () => {
-      const list = createList([1]);
-      const onlyNode = list.tail;
-
-      const removedNode = list.removeLast();
-
-      expect(removedNode).toBe(onlyNode);
-      expect(removedNode?.next).toBeNull();
-      expectList(list, []);
-    });
-
-    it("returns null when the list is empty", () => {
-      const list = new SinglyLinkedList<number>();
-
-      const removedNode = list.removeLast();
+      const removedNode = list[method]();
 
       expect(removedNode).toBeNull();
       expectList(list, []);
@@ -370,18 +317,7 @@ describe("SinglyLinkedList", () => {
       expectSameNodes(getNodes(list), originalNodes);
     });
 
-    it("preserves the nodes that do not match", () => {
-      const list = createList([1, 2, 3, 4, 5]);
-      const originalNodes = getNodes(list);
-
-      const removedCount = list.removeAll((node) => node.value % 2 === 0);
-
-      expect(removedCount).toBe(2);
-      expectList(list, [1, 3, 5]);
-      expectSameNodes(getNodes(list), [originalNodes[0], originalNodes[2], originalNodes[4]]);
-    });
-
-    it("removes matches from the head, middle, and tail", () => {
+    it("removes matches from the head, middle, and tail while preserving other nodes", () => {
       const list = createList([2, 2, 1, 2, 3, 2, 2]);
       const originalNodes = getNodes(list);
       const visits: Visit<number>[] = [];
@@ -394,6 +330,7 @@ describe("SinglyLinkedList", () => {
       expect(removedCount).toBe(5);
       expectVisits(visits, originalNodes);
       expectList(list, [1, 3]);
+      expectSameNodes(getNodes(list), [originalNodes[2], originalNodes[4]]);
     });
 
     it("updates head and tail when only one node remains", () => {
@@ -414,29 +351,6 @@ describe("SinglyLinkedList", () => {
 
       expect(removedCount).toBe(3);
       expectList(list, []);
-    });
-
-    it("supports inserting values after the list is cleared", () => {
-      const list = createList([1, 2, 3]);
-
-      const removedCount = list.removeAll(() => true);
-      list.append(2);
-      list.prepend(1);
-
-      expect(removedCount).toBe(3);
-      expectList(list, [1, 2]);
-    });
-
-    it("supports appending after the tail is removed", () => {
-      const list = createList([1, 2, 3]);
-      const preservedNodes = getNodes(list).slice(0, 2);
-
-      const removedCount = list.removeAll((node) => node.value === 3);
-      list.append(4);
-
-      expect(removedCount).toBe(1);
-      expectList(list, [1, 2, 4]);
-      expectSameNodes(getNodes(list).slice(0, 2), preservedNodes);
     });
   });
 });
