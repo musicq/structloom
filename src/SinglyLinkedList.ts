@@ -278,6 +278,26 @@ export class SinglyLinkedList<T> {
   }
 
   /**
+   * Reverses the list in place by relinking its existing nodes.
+   *
+   * Runs in linear time, O(n), and constant space, O(1).
+   */
+  reverse(): void {
+    let ptr = this.#head;
+    let prev: Nullable<LNode<T>> = null;
+    while (ptr !== null) {
+      const next = ptr.next;
+      ptr.next = prev;
+      prev = ptr;
+      ptr = next;
+    }
+
+    const tail = this.#tail;
+    this.#tail = this.#head;
+    this.#head = tail;
+  }
+
+  /**
    * Creates a temporary node whose next reference points to the given node.
    *
    * @param next - The node the dummy node should precede.

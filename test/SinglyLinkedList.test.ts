@@ -254,6 +254,36 @@ describe("SinglyLinkedList", () => {
     });
   });
 
+  describe("reverse", () => {
+    it("reverses the links in place and swaps the head and tail", () => {
+      const list = createList([1, 2, 3, 4]);
+      const originalNodes = getNodes(list);
+
+      const result = list.reverse();
+
+      expect(result).toBeUndefined();
+      console.log(list.head)
+      expectList(list, [4, 3, 2, 1]);
+      expectSameNodes(getNodes(list), [...originalNodes].reverse());
+      expect(list.head).toBe(originalNodes[3]);
+      expect(list.tail).toBe(originalNodes[0]);
+    });
+
+    it.each([
+      { description: "an empty list", values: [] },
+      { description: "a single-node list", values: [1] },
+    ])("leaves $description unchanged", ({ values }) => {
+      const list = createList(values);
+      const originalNodes = getNodes(list);
+
+      const result = list.reverse();
+
+      expect(result).toBeUndefined();
+      expectList(list, values);
+      expectSameNodes(getNodes(list), originalNodes);
+    });
+  });
+
   describe.each([
     { method: "removeFirst", removedIndex: 0, remainingValues: [2, 3] },
     { method: "removeLast", removedIndex: 2, remainingValues: [1, 2] },
