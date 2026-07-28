@@ -1,11 +1,11 @@
-import type { Nullable, Predicate, Visitor } from "./types.ts";
+import type { Nullable, Optional, Predicate, Visitor } from "./types.ts";
 
 /**
  * A node in a singly linked list.
  *
  * @typeParam T - The type of value stored in the node.
  */
-export class LNode<T> {
+class LNode<T> {
   /** The value stored in this node. */
   value: T;
 
@@ -40,13 +40,13 @@ export class SinglyLinkedList<T> {
   constructor() {}
 
   /** Returns the first node, or `null` when the list is empty. */
-  get head(): Nullable<LNode<T>> {
-    return this.#head;
+  get first(): Optional<T> {
+    return this.#head?.value;
   }
 
   /** Returns the last node, or `null` when the list is empty. */
-  get tail(): Nullable<LNode<T>> {
-    return this.#tail;
+  get last(): Optional<T> {
+    return this.#tail?.value;
   }
 
   /** Returns the number of nodes in the list. */
@@ -110,17 +110,15 @@ export class SinglyLinkedList<T> {
    * @param predicate - The predicate used to test each value.
    * @returns The first matching node, or `null` if no node matches.
    */
-  find(predicate: Predicate<T>): Nullable<LNode<T>> {
+  find(predicate: Predicate<T>): Optional<T> {
     let i = 0;
     let ptr = this.#head;
     while (ptr !== null) {
       if (predicate(ptr.value, i++)) {
-        return ptr;
+        return ptr.value;
       }
       ptr = ptr.next;
     }
-
-    return null;
   }
 
   /**
@@ -188,9 +186,10 @@ export class SinglyLinkedList<T> {
    *
    * @returns The removed node, or `null` if the list is empty.
    */
-  removeFirst(): Nullable<LNode<T>> {
-    if (this.isEmpty) return null;
-    const head = this.#head as LNode<T>;
+  removeFirst(): Optional<T> {
+    if (this.#head === null) return;
+
+    const head = this.#head;
     this.#head = head.next;
     head.next = null;
     this.#size--;
@@ -199,7 +198,7 @@ export class SinglyLinkedList<T> {
       this.#tail = null;
     }
 
-    return head;
+    return head.value;
   }
 
   /**
@@ -210,9 +209,9 @@ export class SinglyLinkedList<T> {
    *
    * @returns The removed node, or `null` if the list is empty.
    */
-  removeLast(): Nullable<LNode<T>> {
-    if (this.isEmpty) return null;
-    const tail = this.#tail as LNode<T>;
+  removeLast(): Optional<T> {
+    if (this.#tail === null) return;
+    const tail = this.#tail;
 
     let current = this.#head as LNode<T>;
     let prev: Nullable<LNode<T>> = null;
@@ -233,7 +232,7 @@ export class SinglyLinkedList<T> {
       this.#head = null;
     }
 
-    return tail;
+    return tail.value;
   }
 
   /**
@@ -300,9 +299,7 @@ export class SinglyLinkedList<T> {
    * @returns A dummy node that is not part of the list.
    */
   #createDummyNode(next: Nullable<LNode<T>> = null): LNode<T> {
-    const node = new LNode(Symbol.for("DUMMY_LNODE") as T);
-    node.next = next;
-    return node;
+    return { next } as LNode<T>;
   }
 
   /**

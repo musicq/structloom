@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest";
-import { LNode, SinglyLinkedList } from "../src/index.ts";
+import { SinglyLinkedList } from "../src/index.ts";
 
 describe("SinglyLinkedList types", () => {
   it("passes values and indexes to callbacks", () => {
@@ -22,7 +22,11 @@ describe("SinglyLinkedList types", () => {
       return value === index;
     });
 
-    expectTypeOf(found).toEqualTypeOf<LNode<number> | null>();
+    expectTypeOf(found).toEqualTypeOf<number | undefined>();
+    expectTypeOf(list.first).toEqualTypeOf<number | undefined>();
+    expectTypeOf(list.last).toEqualTypeOf<number | undefined>();
+    expectTypeOf(list.removeFirst()).toEqualTypeOf<number | undefined>();
+    expectTypeOf(list.removeLast()).toEqualTypeOf<number | undefined>();
   });
 
   it("accepts only values in insertAfter and reports success", () => {
@@ -32,21 +36,25 @@ describe("SinglyLinkedList types", () => {
 
     expectTypeOf(inserted).toEqualTypeOf<boolean>();
 
-    // @ts-expect-error -- A structural node cannot be inserted into a list of numbers.
-    list.insertAfter(() => true, new LNode(4));
+    // @ts-expect-error -- An object cannot be inserted into a list of numbers.
+    list.insertAfter(() => true, { value: 4 });
 
     // @ts-expect-error -- insert was replaced by the explicit insertAfter API.
     list.insert(() => true, 4);
   });
 
-  it("allows LNode instances when they are the declared value type", () => {
-    const first = new LNode(1);
-    const second = new LNode(2);
-    const list = SinglyLinkedList.from<LNode<number>>([first]);
+  it("allows objects when they are the declared value type", () => {
+    const first = { id: 1 };
+    const second = { id: 2 };
+    const list = SinglyLinkedList.from([first]);
 
     const inserted = list.insertAfter((value) => value === first, second);
 
     expectTypeOf(inserted).toEqualTypeOf<boolean>();
+    expectTypeOf(list.first).toEqualTypeOf<{ id: number } | undefined>();
+    expectTypeOf(list.find((value) => value === second)).toEqualTypeOf<
+      { id: number } | undefined
+    >();
   });
 
   it("accepts any iterable and infers its element type", () => {

@@ -1,2 +1,2 @@
 export { Stack } from "./stack.ts";
-export { LNode, SinglyLinkedList } from "./SinglyLinkedList.ts";
+export { SinglyLinkedList } from "./SinglyLinkedList.ts";
