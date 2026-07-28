@@ -8,7 +8,16 @@ function createList<T>(values: Iterable<T>): SinglyLinkedList<T> {
 }
 
 function expectList<T>(list: SinglyLinkedList<T>, values: readonly T[]): void {
-  expect([...list]).toEqual(values);
+  const iterator = list[Symbol.iterator]();
+
+  for (const expectedValue of values) {
+    const result = iterator.next();
+
+    expect(result.done).toBe(false);
+    expect(result.value).toEqual(expectedValue);
+  }
+
+  expect(iterator.next()).toEqual({ value: undefined, done: true });
   expect(list.size).toBe(values.length);
   expect(list.isEmpty).toBe(values.length === 0);
   expect(list.first).toBe(values.length === 0 ? undefined : values[0]);

@@ -1,4 +1,6 @@
 import { describe, expectTypeOf, it } from "vitest";
+// @ts-expect-error -- LNode is an internal implementation detail.
+import { LNode } from "../src/index.ts";
 import { SinglyLinkedList } from "../src/index.ts";
 
 describe("SinglyLinkedList types", () => {

@@ -26,12 +26,13 @@ class LNode<T> {
 /**
  * A mutable, singly linked list of values.
  *
- * The list exposes its nodes through {@link head} and {@link tail}. Each value
- * added with {@link prepend} or {@link append} is wrapped in an {@link LNode}.
+ * Values are accessed through {@link first}, {@link last}, iteration, and
+ * value-oriented search and removal methods. Internal list nodes are not
+ * exposed.
  *
  * @typeParam T - The type of values stored in the list.
  */
-export class SinglyLinkedList<T> {
+export class SinglyLinkedList<T> implements Iterable<T> {
   #head: Nullable<LNode<T>> = null;
   #tail: Nullable<LNode<T>> = null;
   #size: number = 0;
@@ -39,22 +40,22 @@ export class SinglyLinkedList<T> {
   /** Creates an empty singly linked list. */
   constructor() {}
 
-  /** Returns the first node, or `null` when the list is empty. */
+  /** Returns the first value, or `undefined` when the list is empty. */
   get first(): Optional<T> {
     return this.#head?.value;
   }
 
-  /** Returns the last node, or `null` when the list is empty. */
+  /** Returns the last value, or `undefined` when the list is empty. */
   get last(): Optional<T> {
     return this.#tail?.value;
   }
 
-  /** Returns the number of nodes in the list. */
+  /** Returns the number of values in the list. */
   get size(): number {
     return this.#size;
   }
 
-  /** Returns whether the list contains no nodes. */
+  /** Returns whether the list contains no values. */
   get isEmpty(): boolean {
     return this.size === 0;
   }
@@ -100,7 +101,7 @@ export class SinglyLinkedList<T> {
   }
 
   /**
-   * Returns the first node accepted by a predicate.
+   * Returns the first value accepted by a predicate.
    *
    * The predicate receives each value and its zero-based traversal index.
    * Iteration stops as soon as the predicate returns `true`.
@@ -108,7 +109,7 @@ export class SinglyLinkedList<T> {
    * Runs in linear time, O(n), in the worst case.
    *
    * @param predicate - The predicate used to test each value.
-   * @returns The first matching node, or `null` if no node matches.
+   * @returns The first matching value, or `undefined` if no value matches.
    */
   find(predicate: Predicate<T>): Optional<T> {
     let i = 0;
@@ -119,10 +120,12 @@ export class SinglyLinkedList<T> {
       }
       ptr = ptr.next;
     }
+
+    return undefined;
   }
 
   /**
-   * Visits every value in head-to-tail order.
+   * Visits every value in first-to-last order.
    *
    * The visitor receives each value and its zero-based traversal index. Its
    * return value is ignored and does not stop iteration.
@@ -141,16 +144,16 @@ export class SinglyLinkedList<T> {
   }
 
   /**
-   * Removes every node accepted by a predicate.
+   * Removes every value accepted by a predicate.
    *
    * The predicate receives each value and its zero-based position in the
-   * original traversal. Removing an earlier node does not change the indexes
-   * passed for later nodes.
+   * original traversal. Removing an earlier value does not change the indexes
+   * passed for later values.
    *
    * Runs in linear time, O(n).
    *
    * @param predicate - The predicate used to select values for removal.
-   * @returns The number of nodes removed.
+   * @returns The number of values removed.
    */
   removeAll(predicate: Predicate<T>): number {
     let i = 0;
@@ -178,13 +181,11 @@ export class SinglyLinkedList<T> {
   }
 
   /**
-   * Removes and returns the first node.
-   *
-   * The returned node is detached from the list.
+   * Removes and returns the first value.
    *
    * Runs in constant time, O(1).
    *
-   * @returns The removed node, or `null` if the list is empty.
+   * @returns The removed value, or `undefined` if the list is empty.
    */
   removeFirst(): Optional<T> {
     if (this.#head === null) return;
@@ -202,12 +203,12 @@ export class SinglyLinkedList<T> {
   }
 
   /**
-   * Removes and returns the last node.
+   * Removes and returns the last value.
    *
-   * Runs in linear time, O(n), because the predecessor of the tail must be
-   * found by traversing the list.
+   * Runs in linear time, O(n), because the list must be traversed to find the
+   * value preceding the last one.
    *
-   * @returns The removed node, or `null` if the list is empty.
+   * @returns The removed value, or `undefined` if the list is empty.
    */
   removeLast(): Optional<T> {
     if (this.#tail === null) return;
@@ -222,7 +223,7 @@ export class SinglyLinkedList<T> {
     }
 
     if (prev) {
-      (prev as LNode<T>).next = null;
+      prev.next = null;
     }
 
     this.#tail = prev;
@@ -273,7 +274,7 @@ export class SinglyLinkedList<T> {
   }
 
   /**
-   * Reverses the list in place by relinking its existing nodes.
+   * Reverses the order of the values in place.
    *
    * Runs in linear time, O(n), and constant space, O(1).
    */
@@ -287,9 +288,8 @@ export class SinglyLinkedList<T> {
       ptr = next;
     }
 
-    const tail = this.#tail;
     this.#tail = this.#head;
-    this.#head = tail;
+    this.#head = prev;
   }
 
   /**
@@ -321,6 +321,13 @@ export class SinglyLinkedList<T> {
     return list;
   }
 
+  /**
+   * Returns a new iterator over the values in first-to-last order.
+   *
+   * Each call creates an independent iterator.
+   *
+   * @returns An iterable iterator over the stored values.
+   */
   [Symbol.iterator](): IterableIterator<T> {
     let current = this.#head;
 
