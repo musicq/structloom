@@ -9,7 +9,7 @@
     "test:types": "vitest run --typecheck.only --typecheck.tsconfig tsconfig.type-tests.json",
     "test:w": "vitest",
     "test": "vitest run",
-    "check": "npm run build && npm run test:types && npm test"
+    "check": "pnpm run build && pnpm run test:types && pnpm test"
   },
   "keywords": [
     "data-structures",
