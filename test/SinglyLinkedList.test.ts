@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { LNode, SinglyLinkedList } from "../src/index.ts";
 
-type Visit<T> = readonly [node: LNode<T>, index: number];
+type Visit<T> = readonly [value: T, index: number];
 
-function createList<T>(values: readonly T[]): SinglyLinkedList<T> {
-  return SinglyLinkedList.from([...values]);
+function createList<T>(values: Iterable<T>): SinglyLinkedList<T> {
+  return SinglyLinkedList.from(values);
 }
 
 function getNodes<T>(list: SinglyLinkedList<T>): LNode<T>[] {
@@ -46,12 +46,9 @@ function expectSameNodes<T>(
   });
 }
 
-function expectVisits<T>(visits: readonly Visit<T>[], expectedNodes: readonly LNode<T>[]): void {
-  expectSameNodes(
-    visits.map(([node]) => node),
-    expectedNodes,
-  );
-  expect(visits.map(([, index]) => index)).toEqual(expectedNodes.map((_, index) => index));
+function expectVisits<T>(visits: readonly Visit<T>[], expectedValues: readonly T[]): void {
+  expect(visits.map(([value]) => value)).toEqual(expectedValues);
+  expect(visits.map(([, index]) => index)).toEqual(expectedValues.map((_, index) => index));
 }
 
 describe("LNode", () => {
@@ -91,8 +88,9 @@ describe("SinglyLinkedList", () => {
       expectList(list, [1]);
 
       list.prepend(2);
-      list.prepend(3);
+      expectList(list, [2, 1]);
 
+      list.prepend(3);
       expectList(list, [3, 2, 1]);
       expect(list.tail).toBe(originalTail);
     });
@@ -107,15 +105,16 @@ describe("SinglyLinkedList", () => {
       expectList(list, [1]);
 
       list.append(2);
-      list.append(3);
+      expectList(list, [1, 2]);
 
+      list.append(3);
       expectList(list, [1, 2, 3]);
       expect(list.head).toBe(originalHead);
     });
   });
 
   describe("from", () => {
-    it("copies values in order without retaining or modifying the source array", () => {
+    it("copies array values in order without retaining or modifying the source", () => {
       const values = [1, 2, 3];
       const list = SinglyLinkedList.from(values);
 
@@ -124,20 +123,85 @@ describe("SinglyLinkedList", () => {
       expectList(list, [1, 2, 3]);
       expectList(SinglyLinkedList.from<number>([]), []);
     });
+
+    it("accepts non-array iterables", () => {
+      const values = new Set([1, 2, 3]);
+
+      expectList(SinglyLinkedList.from(values), [1, 2, 3]);
+    });
+
+    it("consumes a generator once and preserves its yield order", () => {
+      function* values(): Generator<number> {
+        yield 1;
+        yield 2;
+        yield 3;
+      }
+
+      expectList(SinglyLinkedList.from(values()), [1, 2, 3]);
+    });
+  });
+
+  describe("iterator", () => {
+    it.each([
+      { values: [1, 2, 3], expectedValues: [1, 2, 3] },
+      { values: [], expectedValues: [] },
+    ])("supports for...of iteration over $values", ({ values, expectedValues }) => {
+      const list = createList(values);
+      const iteratedValues: number[] = [];
+
+      for (const value of list) {
+        iteratedValues.push(value);
+      }
+
+      expect(iteratedValues).toEqual(expectedValues);
+      expectList(list, values);
+    });
+
+    it("starts from the head for every traversal", () => {
+      const values = [1, 2, 3];
+      const list = createList(values);
+
+      for (let traversal = 0; traversal < 2; traversal++) {
+        const iteratedValues: number[] = [];
+
+        for (const value of list) {
+          iteratedValues.push(value);
+        }
+
+        expect(iteratedValues).toEqual(values);
+      }
+
+      expectList(list, values);
+    });
+
+    it("returns an iterable iterator that continues from its current position", () => {
+      const list = createList([1, 2, 3]);
+      const iterator: IterableIterator<number> = list[Symbol.iterator]();
+
+      expect(iterator[Symbol.iterator]()).toBe(iterator);
+      expect(iterator.next()).toEqual({ value: 1, done: false });
+
+      const remainingValues: number[] = [];
+      for (const value of iterator) {
+        remainingValues.push(value);
+      }
+
+      expect(remainingValues).toEqual([2, 3]);
+      expect(iterator.next()).toEqual({ value: undefined, done: true });
+    });
   });
 
   describe("forEach", () => {
-    it("visits every node with its zero-based index regardless of callback results", () => {
+    it("visits every value with its zero-based index regardless of callback results", () => {
       const list = createList([1, 2, 3]);
-      const nodes = getNodes(list);
       const visits: Visit<number>[] = [];
 
-      list.forEach((node, index) => {
-        visits.push([node, index]);
+      list.forEach((value, index) => {
+        visits.push([value, index]);
         return false;
       });
 
-      expectVisits(visits, nodes);
+      expectVisits(visits, [1, 2, 3]);
     });
 
     it("does not invoke the callback for an empty list", () => {
@@ -155,27 +219,26 @@ describe("SinglyLinkedList", () => {
       const nodes = getNodes(list);
       const visits: Visit<number>[] = [];
 
-      const result = list.find((node, index) => {
-        visits.push([node, index]);
-        return node.value === 2;
+      const result = list.find((value, index) => {
+        visits.push([value, index]);
+        return value === 2;
       });
 
       expect(result).toBe(nodes[2]);
-      expectVisits(visits, nodes.slice(0, 3));
+      expectVisits(visits, [1, 3, 2]);
     });
 
     it("returns null after visiting every node when nothing matches", () => {
       const list = createList([1, 2, 3]);
-      const nodes = getNodes(list);
       const visits: Visit<number>[] = [];
 
-      const result = list.find((node, index) => {
-        visits.push([node, index]);
+      const result = list.find((value, index) => {
+        visits.push([value, index]);
         return false;
       });
 
       expect(result).toBeNull();
-      expectVisits(visits, nodes);
+      expectVisits(visits, [1, 2, 3]);
     });
 
     it("does not invoke the predicate for an empty list", () => {
@@ -188,69 +251,79 @@ describe("SinglyLinkedList", () => {
     });
   });
 
-  describe("insert", () => {
-    it("inserts the supplied node after the first match and stops visiting", () => {
+  describe("insertAfter", () => {
+    it("inserts a value after the first match and stops visiting", () => {
       const list = createList([1, 2, 2, 4]);
       const originalNodes = getNodes(list);
-      const newNode = new LNode(3);
       const visits: Visit<number>[] = [];
 
-      list.insert((node, index) => {
-        visits.push([node, index]);
-        return node.value === 2;
-      }, newNode);
+      const inserted = list.insertAfter((value, index) => {
+        visits.push([value, index]);
+        return value === 2;
+      }, 3);
 
-      expectVisits(visits, originalNodes.slice(0, 2));
+      expect(inserted).toBe(true);
+      expectVisits(visits, [1, 2]);
       expectList(list, [1, 2, 3, 2, 4]);
-      expectSameNodes(getNodes(list), [
-        originalNodes[0],
-        originalNodes[1],
-        newNode,
-        originalNodes[2],
-        originalNodes[3],
-      ]);
+      const nodes = getNodes(list);
+      expectSameNodes(nodes.slice(0, 2), originalNodes.slice(0, 2));
+      expectSameNodes(nodes.slice(3), originalNodes.slice(2));
+      expect(nodes[2]).toBeInstanceOf(LNode);
+      expect(nodes[2]).not.toBe(originalNodes[1]);
     });
 
-    it("wraps a supplied value in a node and updates the tail", () => {
+    it("inserts after the tail and updates the tail reference", () => {
       const list = createList([1, 2, 3]);
       const originalNodes = getNodes(list);
 
-      list.insert((node) => node.value === 3, 4);
+      const inserted = list.insertAfter((value) => value === 3, 4);
 
       const nodes = getNodes(list);
+      expect(inserted).toBe(true);
       expectList(list, [1, 2, 3, 4]);
       expectSameNodes(nodes.slice(0, 3), originalNodes);
       expect(nodes[3]).toBeInstanceOf(LNode);
       expect(list.tail).toBe(nodes[3]);
     });
 
-    it("leaves the list and supplied node unchanged when nothing matches", () => {
+    it("returns false and leaves the list unchanged when nothing matches", () => {
       const list = createList([1, 2, 3]);
       const originalNodes = getNodes(list);
-      const newNode = new LNode(4);
       const visits: Visit<number>[] = [];
 
-      list.insert((node, index) => {
-        visits.push([node, index]);
+      const inserted = list.insertAfter((value, index) => {
+        visits.push([value, index]);
         return false;
-      }, newNode);
+      }, 4);
 
-      expectVisits(visits, originalNodes);
+      expect(inserted).toBe(false);
+      expectVisits(visits, [1, 2, 3]);
       expectList(list, [1, 2, 3]);
       expectSameNodes(getNodes(list), originalNodes);
-      expect(newNode.next).toBeNull();
     });
 
-    it("does nothing for an empty list", () => {
+    it("returns false without invoking the predicate for an empty list", () => {
       const list = new SinglyLinkedList<number>();
-      const newNode = new LNode(1);
-      const predictor = vi.fn(() => true);
+      const predicate = vi.fn(() => true);
 
-      list.insert(predictor, newNode);
+      const inserted = list.insertAfter(predicate, 1);
 
-      expect(predictor).not.toHaveBeenCalled();
+      expect(inserted).toBe(false);
+      expect(predicate).not.toHaveBeenCalled();
       expectList(list, []);
-      expect(newNode.next).toBeNull();
+    });
+
+    it("treats an LNode instance as a value when T itself is LNode", () => {
+      const firstValue = new LNode(1);
+      const insertedValue = new LNode(2);
+      const list = createList<LNode<number>>([firstValue]);
+
+      const inserted = list.insertAfter(() => true, insertedValue);
+
+      expect(inserted).toBe(true);
+      expectList(list, [firstValue, insertedValue]);
+      expect(list.tail?.value).toBe(insertedValue);
+      expect(list.tail).not.toBe(insertedValue);
     });
   });
 
@@ -262,7 +335,6 @@ describe("SinglyLinkedList", () => {
       const result = list.reverse();
 
       expect(result).toBeUndefined();
-      console.log(list.head)
       expectList(list, [4, 3, 2, 1]);
       expectSameNodes(getNodes(list), [...originalNodes].reverse());
       expect(list.head).toBe(originalNodes[3]);
@@ -322,6 +394,16 @@ describe("SinglyLinkedList", () => {
       expect(removedNode).toBeNull();
       expectList(list, []);
     });
+
+    it("preserves every invariant while removing nodes until empty", () => {
+      const list = createList([1, 2, 3]);
+      const expectedValues = method === "removeFirst" ? [[2, 3], [3], []] : [[1, 2], [1], []];
+
+      for (const values of expectedValues) {
+        list[method]();
+        expectList(list, values);
+      }
+    });
   });
 
   describe("removeAll", () => {
@@ -352,13 +434,13 @@ describe("SinglyLinkedList", () => {
       const originalNodes = getNodes(list);
       const visits: Visit<number>[] = [];
 
-      const removedCount = list.removeAll((node, index) => {
-        visits.push([node, index]);
-        return node.value === 2;
+      const removedCount = list.removeAll((value, index) => {
+        visits.push([value, index]);
+        return value === 2;
       });
 
       expect(removedCount).toBe(5);
-      expectVisits(visits, originalNodes);
+      expectVisits(visits, [2, 2, 1, 2, 3, 2, 2]);
       expectList(list, [1, 3]);
       expectSameNodes(getNodes(list), [originalNodes[2], originalNodes[4]]);
     });
@@ -367,7 +449,7 @@ describe("SinglyLinkedList", () => {
       const list = createList([1, 2, 3]);
       const remainingNode = getNodes(list)[1];
 
-      const removedCount = list.removeAll((node) => node.value !== 2);
+      const removedCount = list.removeAll((value) => value !== 2);
 
       expect(removedCount).toBe(2);
       expectList(list, [2]);
@@ -382,5 +464,35 @@ describe("SinglyLinkedList", () => {
       expect(removedCount).toBe(3);
       expectList(list, []);
     });
+
+    it.each([
+      {
+        description: "the head",
+        values: [1, 2, 3],
+        predicate: (value: number) => value === 1,
+        expectedValues: [2, 3],
+      },
+      {
+        description: "the tail",
+        values: [1, 2, 3],
+        predicate: (value: number) => value === 3,
+        expectedValues: [1, 2],
+      },
+      {
+        description: "consecutive nodes",
+        values: [1, 2, 2, 3],
+        predicate: (value: number) => value === 2,
+        expectedValues: [1, 3],
+      },
+    ])(
+      "preserves every invariant when removing $description",
+      ({ values, predicate, expectedValues }) => {
+        const list = createList(values);
+
+        list.removeAll(predicate);
+
+        expectList(list, expectedValues);
+      },
+    );
   });
 });

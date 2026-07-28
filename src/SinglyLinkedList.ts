@@ -1,4 +1,4 @@
-import type { Nullable, Predicator, Visitor } from "./types.ts";
+import type { Nullable, Predicate, Visitor } from "./types.ts";
 
 /**
  * A node in a singly linked list.
@@ -81,19 +81,15 @@ export class SinglyLinkedList<T> {
   /**
    * Adds a value to the end of the list.
    *
-   * Runs in linear time, O(n), because the implementation traverses the list.
+   * Runs in constant time, O(1).
    *
    * @param value - The value to add.
    */
   append(value: T): void {
     const newNode = new LNode(value);
-
-    let ptr = this.#createDummyNode(this.#head);
-    while (ptr.next !== null) {
-      ptr = ptr.next;
+    if (!this.isEmpty) {
+      (this.#tail as LNode<T>).next = newNode;
     }
-
-    ptr.next = newNode;
     this.#tail = newNode;
 
     if (this.#head === null) {
@@ -106,21 +102,20 @@ export class SinglyLinkedList<T> {
   /**
    * Returns the first node accepted by a predicate.
    *
-   * The predicate receives each node and its zero-based traversal index.
+   * The predicate receives each value and its zero-based traversal index.
    * Iteration stops as soon as the predicate returns `true`.
    *
    * Runs in linear time, O(n), in the worst case.
    *
-   * @param predictor - The predicate used to test each node.
+   * @param predicate - The predicate used to test each value.
    * @returns The first matching node, or `null` if no node matches.
    */
-  find(predictor: Predicator<LNode<T>>): Nullable<LNode<T>> {
-    let ptr = this.#createDummyNode(this.#head);
-
+  find(predicate: Predicate<T>): Nullable<LNode<T>> {
     let i = 0;
-    while (ptr.next !== null) {
-      if (predictor(ptr.next, i++)) {
-        return ptr.next;
+    let ptr = this.#head;
+    while (ptr !== null) {
+      if (predicate(ptr.value, i++)) {
+        return ptr;
       }
       ptr = ptr.next;
     }
@@ -129,20 +124,20 @@ export class SinglyLinkedList<T> {
   }
 
   /**
-   * Visits every node in head-to-tail order.
+   * Visits every value in head-to-tail order.
    *
-   * The visitor receives each node and its zero-based traversal index. Its
+   * The visitor receives each value and its zero-based traversal index. Its
    * return value is ignored and does not stop iteration.
    *
    * Runs in linear time, O(n).
    *
-   * @param visitor - The function to invoke for each node.
+   * @param visitor - The function to invoke for each value.
    */
-  forEach(visitor: Visitor<LNode<T>>): void {
+  forEach(visitor: Visitor<T>): void {
     let i = 0;
-    let ptr = this.#createDummyNode(this.#head);
-    while (ptr.next !== null) {
-      visitor(ptr.next, i++);
+    let ptr = this.#head;
+    while (ptr !== null) {
+      visitor(ptr.value, i++);
       ptr = ptr.next;
     }
   }
@@ -150,16 +145,16 @@ export class SinglyLinkedList<T> {
   /**
    * Removes every node accepted by a predicate.
    *
-   * The predicate receives each node and its zero-based position in the
+   * The predicate receives each value and its zero-based position in the
    * original traversal. Removing an earlier node does not change the indexes
    * passed for later nodes.
    *
    * Runs in linear time, O(n).
    *
-   * @param predictor - The predicate used to select nodes for removal.
+   * @param predicate - The predicate used to select values for removal.
    * @returns The number of nodes removed.
    */
-  removeAll(predictor: Predicator<LNode<T>>): number {
+  removeAll(predicate: Predicate<T>): number {
     let i = 0;
     let dummy = this.#createDummyNode(this.#head);
     let prev = dummy;
@@ -168,7 +163,7 @@ export class SinglyLinkedList<T> {
 
     while (current !== null) {
       const next = current.next;
-      if (predictor(current, i++)) {
+      if (predicate(current.value, i++)) {
         prev.next = next;
         removedCnt++;
         this.#size--;
@@ -242,28 +237,26 @@ export class SinglyLinkedList<T> {
   }
 
   /**
-   * Inserts a value or node after the first node accepted by a predicate.
+   * Inserts a value after the first value accepted by a predicate.
    *
-   * The predicate receives each node and its zero-based traversal index.
-   * Nothing is inserted if the list is empty or no node matches. When an
-   * existing node is supplied, its {@link LNode.next} reference is overwritten
-   * during insertion, so the node should be detached from any other list.
+   * The predicate receives each value and its zero-based traversal index.
+   * Nothing is inserted if the list is empty or no value matches.
    *
    * Runs in linear time, O(n), in the worst case.
    *
-   * @param predictor - The predicate used to find the node to insert after.
-   * @param newNode - The value to wrap in a new node, or a detached node to insert.
+   * @param predicate - The predicate used to find the value to insert after.
+   * @param value - The value to insert.
+   * @returns Whether a value was inserted.
    */
-  insert(predictor: Predicator<LNode<T>>, newNode: T | LNode<T>): void {
-    let ptr = this.#createDummyNode(this.#head);
+  insertAfter(predicate: Predicate<T>, value: T): boolean {
     let i = 0;
+    let ptr = this.#head;
 
-    while (ptr.next !== null) {
-      const current = ptr.next;
-      if (predictor(current, i++)) {
-        const insertNode = newNode instanceof LNode ? newNode : new LNode(newNode);
-        const next = current.next;
-        current.next = insertNode;
+    while (ptr !== null) {
+      if (predicate(ptr.value, i++)) {
+        const insertNode = new LNode(value);
+        const next = ptr.next;
+        ptr.next = insertNode;
         insertNode.next = next;
         this.#size++;
 
@@ -271,10 +264,13 @@ export class SinglyLinkedList<T> {
         if (next === null) {
           this.#tail = insertNode;
         }
-        break;
+
+        return true;
       }
       ptr = ptr.next;
     }
+
+    return false;
   }
 
   /**
@@ -315,16 +311,42 @@ export class SinglyLinkedList<T> {
    * Runs in linear time, O(n).
    *
    * @typeParam T - The type of values stored in the list.
-   * @param values - The values with which to populate the list.
+   * @param values - An iterable of values with which to populate the list.
    * @returns A new list containing the provided values.
    */
-  static from<T>(values: T[]): SinglyLinkedList<T> {
+  static from<T>(values: Iterable<T>): SinglyLinkedList<T> {
     const list = new SinglyLinkedList<T>();
 
-    for (let i = values.length - 1; i >= 0; i--) {
-      list.prepend(values[i]);
+    for (const v of values) {
+      list.append(v);
     }
 
     return list;
+  }
+
+  [Symbol.iterator](): IterableIterator<T> {
+    let current = this.#head;
+
+    return {
+      next() {
+        if (current !== null) {
+          const r = {
+            value: current.value,
+            done: false,
+          };
+
+          current = current.next;
+          return r;
+        }
+
+        return {
+          value: undefined,
+          done: true,
+        };
+      },
+      [Symbol.iterator]() {
+        return this;
+      },
+    };
   }
 }
